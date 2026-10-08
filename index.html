@@ -91,7 +91,7 @@ function createMesh(geometry,name,type='matte'){
  const mesh=new THREE.Mesh(geometry,material(type,defaults[type]));mesh.position.set(center.x,center.y,center.z);
  mesh.userData={name,type};scene.add(mesh);items.push(mesh);choose(mesh);refresh();fitAll();return mesh;
 }
-function choose(mesh){selected=mesh;transform.detach();if(mesh)transform.attach(mesh);$('editor').classList.toggle('hidden',!mesh);$('deleteBtn').disabled=!mesh;$('duplicateBtn').disabled=!mesh;
+function choose(mesh){selected=mesh;transform.detach();if(mesh&&document.querySelector('[data-tool].active'))transform.attach(mesh);$('editor').classList.toggle('hidden',!mesh);$('deleteBtn').disabled=!mesh;$('duplicateBtn').disabled=!mesh;
  if(mesh){$('material').value=mesh.userData.type;$('color').value='#'+mesh.material.color.getHexString();$('roughness').value=mesh.material.roughness;$('roughVal').textContent=Number(mesh.material.roughness).toFixed(2)}
  refresh();}
 function refresh(){const list=$('objects');list.replaceChildren();if(!items.length){list.textContent='Inga objekt ännu.';$('empty').classList.remove('hidden');return}
@@ -112,7 +112,7 @@ $('duplicateBtn').onclick=()=>{if(!selected)return;const original=selected;const
 function updateMaterial(){if(!selected)return;const type=$('material').value,color=$('color').value,rough=Number($('roughness').value);selected.material.dispose();selected.material=material(type,color,rough);selected.userData.type=type;$('roughVal').textContent=rough.toFixed(2)}
 $('material').onchange=()=>{if(!selected)return;const type=$('material').value;$('color').value=defaults[type];$('roughness').value=type==='clear'?.12:type==='smoke'?.23:type==='frost'?.55:type==='metal'?.23:type==='gloss'?.17:.72;updateMaterial()};
 $('color').oninput=updateMaterial;$('roughness').oninput=updateMaterial;
-document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{transform.setMode(b.dataset.tool);document.querySelectorAll('[data-tool]').forEach(x=>x.classList.toggle('active',x===b))});
+document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{const wasActive=b.classList.contains('active');document.querySelectorAll('[data-tool]').forEach(x=>x.classList.remove('active'));if(wasActive){transform.detach();return}b.classList.add('active');transform.setMode(b.dataset.tool);if(selected)transform.attach(selected)});
 $('fit').onclick=fitAll;$('resetCam').onclick=()=>{orbit.target.set(0,0,0);camera.position.set(125,100,170);orbit.update()};
 $('gridBtn').onclick=()=>{grid.visible=!grid.visible;$('gridBtn').textContent='Rutnät: '+(grid.visible?'på':'av')};
 $('bg').onchange=e=>scene.background=new THREE.Color(e.target.value==='light'?'#dde4ed':'#121824');

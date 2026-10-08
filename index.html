@@ -48,6 +48,8 @@ kbd{font-size:11px;color:#b0bdd0}
 <p class="muted" style="font-size:12px">Flytta, rotera och skala med handtagen i scenen. STL har normalt inga måttenheter; vi antar millimeter.</p>
 </section>
 <section><h2>Scen</h2><label for="bg">Bakgrund</label><select id="bg"><option value="dark">Mörk</option><option value="light">Ljus</option></select>
+<div class="buttons" style="margin-top:10px"><button id="pickBg">Välj bakgrundsbild</button><button id="clearBg" disabled>Ta bort bild</button></div>
+<p id="bgName" class="muted" style="font-size:12px;margin:8px 0 0">Ingen bakgrundsbild vald.</p>
 <label for="light">Ljusstyrka</label><input id="light" type="range" min=".3" max="3" step=".1" value="1.5">
 <div class="buttons" style="margin-top:12px"><button id="shot">Spara bild (PNG)</button></div>
 </section>
@@ -55,6 +57,7 @@ kbd{font-size:11px;color:#b0bdd0}
 </aside>
 </main>
 <input type="file" id="fileInput" accept=".stl" multiple hidden>
+<input type="file" id="bgInput" accept="image/png,image/jpeg,image/webp" hidden>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
@@ -98,7 +101,7 @@ function refresh(){const list=$('objects');list.replaceChildren();if(!items.leng
  $('empty').classList.add('hidden');items.forEach((mesh,i)=>{const b=document.createElement('button');b.className='obj'+(mesh===selected?' active':'');b.textContent=(i+1)+'. '+mesh.userData.name;b.title=mesh.userData.name;b.onclick=()=>choose(mesh);list.appendChild(b)})}
 function fitAll(){if(!items.length)return;const box=new THREE.Box3();items.forEach(m=>box.expandByObject(m));const sphere=box.getBoundingSphere(new THREE.Sphere());const r=Math.max(2,sphere.radius);orbit.target.copy(sphere.center);camera.position.copy(sphere.center).add(new THREE.Vector3(r*1.8,r*1.3,r*2.2));camera.near=Math.max(.001,r/1000);camera.far=Math.max(1000,r*100);camera.updateProjectionMatrix();orbit.update()}
 function render(){requestAnimationFrame(render);orbit.update();renderer.render(scene,camera)}render();
-function resize(){const w=host.clientWidth,h=host.clientHeight;if(w&&h){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}}
+function resize(){const w=host.clientWidth,h=host.clientHeight;if(w&&h){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();if(bgImage)updateBackground()}}
 new ResizeObserver(resize).observe(host);resize();
 async function loadFiles(files){for(const file of files){if(!file.name.toLowerCase().endsWith('.stl')){notify('Endast STL-filer stöds ännu.');continue}
  try{const buffer=await file.arrayBuffer();const geo=loader.parse(buffer);if(!geo.attributes.position?.count)throw Error('Tom eller ogiltig STL');createMesh(geo,file.name);notify('Öppnade '+file.name)}catch(e){console.error(e);notify('Kunde inte läsa '+file.name)}}}
@@ -115,7 +118,38 @@ $('color').oninput=updateMaterial;$('roughness').oninput=updateMaterial;
 document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{const wasActive=b.classList.contains('active');document.querySelectorAll('[data-tool]').forEach(x=>x.classList.remove('active'));if(wasActive){transform.detach();return}b.classList.add('active');transform.setMode(b.dataset.tool);if(selected)transform.attach(selected)});
 $('fit').onclick=fitAll;$('resetCam').onclick=()=>{orbit.target.set(0,0,0);camera.position.set(125,100,170);orbit.update()};
 $('gridBtn').onclick=()=>{grid.visible=!grid.visible;$('gridBtn').textContent='Rutnät: '+(grid.visible?'på':'av')};
-$('bg').onchange=e=>scene.background=new THREE.Color(e.target.value==='light'?'#dde4ed':'#121824');
+// A background is a separate scene texture; the renderer includes it in PNG exports.
+let bgImage=null,bgTexture=null;
+const bgCanvas=document.createElement('canvas'),bgCtx=bgCanvas.getContext('2d');
+function updateBackground(){
+ if(!bgImage)return;
+ const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);
+ const scale=Math.min(1,2048/Math.max(w,h));
+ bgCanvas.width=Math.max(1,Math.round(w*scale));bgCanvas.height=Math.max(1,Math.round(h*scale));
+ const iw=bgImage.naturalWidth,ih=bgImage.naturalHeight,ratio=Math.max(bgCanvas.width/iw,bgCanvas.height/ih);
+ const dw=iw*ratio,dh=ih*ratio;
+ bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+ bgCtx.drawImage(bgImage,(bgCanvas.width-dw)/2,(bgCanvas.height-dh)/2,dw,dh);
+ if(bgTexture)bgTexture.dispose();
+ bgTexture=new THREE.CanvasTexture(bgCanvas);bgTexture.colorSpace=THREE.SRGBColorSpace;
+ scene.background=bgTexture;
+}
+function clearBackground(){
+ bgImage=null;if(bgTexture){bgTexture.dispose();bgTexture=null}
+ scene.background=new THREE.Color($('bg').value==='light'?'#dde4ed':'#121824');
+ $('clearBg').disabled=true;$('bgName').textContent='Ingen bakgrundsbild vald.';$('bgInput').value='';
+}
+$('pickBg').onclick=()=>$('bgInput').click();
+$('clearBg').onclick=clearBackground;
+$('bgInput').onchange=e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type)){notify('Välj en JPG-, PNG- eller WebP-bild.');return}
+ const url=URL.createObjectURL(file),img=new Image();
+ img.onload=()=>{URL.revokeObjectURL(url);bgImage=img;updateBackground();$('clearBg').disabled=false;$('bgName').textContent=file.name;notify('Bakgrundsbilden har lagts till.');};
+ img.onerror=()=>{URL.revokeObjectURL(url);notify('Kunde inte öppna bakgrundsbilden.');};
+ img.src=url;
+};
+$('bg').onchange=e=>{if(bgImage)clearBackground();else scene.background=new THREE.Color(e.target.value==='light'?'#dde4ed':'#121824')};
 $('light').oninput=e=>{key.intensity=Number(e.target.value)};
 $('shot').onclick=()=>{renderer.render(scene,camera);const a=document.createElement('a');a.download='stl-studio.png';a.href=renderer.domElement.toDataURL('image/png');a.click()};
 renderer.domElement.addEventListener('pointerup',e=>{if(transform.dragging)return;const bounds=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-bounds.left)/bounds.width*2-1,-(e.clientY-bounds.top)/bounds.height*2+1);ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(items,false)[0];if(hit)choose(hit.object)});

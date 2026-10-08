@@ -75,6 +75,8 @@ const key=new THREE.DirectionalLight(0xffffff,2);key.position.set(80,150,100);sc
 const fill=new THREE.DirectionalLight(0x9ebeff,.8);fill.position.set(-100,50,-80);scene.add(fill);
 const grid=new THREE.GridHelper(300,30,0x556279,0x334054);scene.add(grid);
 const transform=new TransformControls(camera,renderer.domElement);scene.add(transform.getHelper());transform.addEventListener('dragging-changed',e=>orbit.enabled=!e.value);
+let bgImage=null,bgTexture=null;
+const bgCanvas=document.createElement('canvas'),bgCtx=bgCanvas.getContext('2d');
 const loader=new STLLoader(),items=[];let selected=null;const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
 function notify(msg){$('toast').textContent=msg;clearTimeout(notify.timer);notify.timer=setTimeout(()=>$('toast').textContent='',5500)}
 function material(type,color='#75a8f5',rough=null){
@@ -119,8 +121,6 @@ document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{const wasActi
 $('fit').onclick=fitAll;$('resetCam').onclick=()=>{orbit.target.set(0,0,0);camera.position.set(125,100,170);orbit.update()};
 $('gridBtn').onclick=()=>{grid.visible=!grid.visible;$('gridBtn').textContent='Rutnät: '+(grid.visible?'på':'av')};
 // A background is a separate scene texture; the renderer includes it in PNG exports.
-let bgImage=null,bgTexture=null;
-const bgCanvas=document.createElement('canvas'),bgCtx=bgCanvas.getContext('2d');
 function updateBackground(){
  if(!bgImage)return;
  const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);

@@ -39,6 +39,7 @@ kbd{font-size:11px;color:#b0bdd0}
 <section><h2>Objekt i scenen</h2><div id="objects"><span class="muted">Inga objekt ännu.</span></div><div class="buttons" style="margin-top:10px"><button id="deleteBtn" disabled>Ta bort valt</button><button id="duplicateBtn" disabled>Duplicera</button></div></section>
 <section id="editor" class="hidden">
 <h2>Redigera valt objekt</h2><div id="tools"><button data-tool="translate" class="active">Flytta</button><button data-tool="rotate">Rotera</button><button data-tool="scale">Skala</button></div>
+<p class="muted" style="font-size:12px;margin:8px 0 12px">Rotation snäpper alltid i steg om 15°.</p>
 <label for="material">Material</label><select id="material">
 <option value="matte">Matt plast</option><option value="gloss">Blank plast</option><option value="metal">Metall</option>
 <option value="clear">Klar plexi</option><option value="smoke">Rökfärgad plexi</option><option value="frost">Frostad plexi</option>
@@ -74,7 +75,7 @@ scene.add(new THREE.HemisphereLight(0xe2efff,0x3e485e,2));
 const key=new THREE.DirectionalLight(0xffffff,2);key.position.set(80,150,100);scene.add(key);
 const fill=new THREE.DirectionalLight(0x9ebeff,.8);fill.position.set(-100,50,-80);scene.add(fill);
 const grid=new THREE.GridHelper(300,30,0x556279,0x334054);scene.add(grid);
-const transform=new TransformControls(camera,renderer.domElement);scene.add(transform.getHelper());transform.addEventListener('dragging-changed',e=>orbit.enabled=!e.value);
+const transform=new TransformControls(camera,renderer.domElement);transform.setRotationSnap(Math.PI/12);scene.add(transform.getHelper());transform.addEventListener('dragging-changed',e=>orbit.enabled=!e.value);
 let bgImage=null,bgTexture=null;
 const bgCanvas=document.createElement('canvas'),bgCtx=bgCanvas.getContext('2d');
 const loader=new STLLoader(),items=[];let selected=null;const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
